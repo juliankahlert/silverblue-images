@@ -1,0 +1,6 @@
+ref: fedora/x86_64/silverblue
+releasever: "40"
+repos:
+  - fedora
+  - fedora-updates
+include: fedora-coreos-base.yaml
