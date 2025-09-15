@@ -10,26 +10,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install podman and dependencies
+      - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y podman curl jq
+          sudo apt install -y podman curl jq coreutils
 
-      - name: Download cosa CLI
+      - name: Download cosa CLI (correctly)
         run: |
-          curl -LO https://github.com/coreos/coreos-assembler/releases/latest/download/cosa-linux-amd64
-          chmod +x cosa-linux-amd64
-          sudo mv cosa-linux-amd64 /usr/local/bin/cosa
+          # Get latest release tag
+          COSA_VERSION=$(curl -s https://api.github.com/repos/coreos/coreos-assembler/releases/latest | jq -r .tag_name)
 
-      - name: Initialize cosa
+          # Download the actual binary
+          curl -L -o cosa "https://github.com/coreos/coreos-assembler/releases/download/${COSA_VERSION}/coreos-assembler-${COSA_VERSION}-x86_64"
+
+          chmod +x cosa
+          sudo mv cosa /usr/local/bin/cosa
+
+      - name: Initialize cosa project
         run: |
           cosa init
 
-      - name: Fetch cosa
+      - name: Add config files
+        run: |
+          mkdir -p src/config
+          cp image/ostree/config.yaml src/config/manifest.yaml
+          cp image/ignition/config.yaml ignition-config.yaml
+
+      - name: Fetch sources
         run: |
           cosa fetch
 
-      - name: Build cosa
+      - name: Build OSTree commit
         run: |
           cosa build
 
@@ -58,7 +69,9 @@ jobs:
         run: |
           ISO=$(ls builds/latest/*.iso | head -n1)
           cp "$ISO" original.iso
-          coreos-installer iso customize --dest-ignition ignition/config.ign -o custom-silverblue.iso original.iso
+          coreos-installer iso customize \
+            --dest-ignition ignition/config.ign \
+            -o custom-silverblue.iso original.iso
 
       - name: Upload ISO
         uses: actions/upload-artifact@v4
