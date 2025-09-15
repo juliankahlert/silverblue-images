@@ -1,0 +1,10 @@
+variant: fcos
+version: 1.5.0
+storage:
+  files:
+    - path: /etc/selinux/config
+      mode: 0644
+      contents:
+        inline: |
+          SELINUX=disabled
+          SELINUXTYPE=targeted
