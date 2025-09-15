@@ -1,80 +1,66 @@
-name: Build Custom Silverblue ISO (Offline Install)
+name: Build Custom Silverblue ISO
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build ISO
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install system deps
+      - name: Install system dependencies
         run: |
           sudo apt update
           sudo apt install -y podman curl jq coreutils
 
-      - name: Set up coreos-assembler container
+      - name: Pull coreos-assembler container
         run: |
           podman pull quay.io/coreos-assembler/coreos-assembler:latest
-          podman volume create cosa-cache
+          podman volume create cosa-cache || true
 
-      - name: Copy config files
+      - name: Initialize coreos-assembler (cosa)
         run: |
-          mkdir -p src/config
-          cp image/ostree/config.yaml src/config/manifest.yaml
-          cp image/ignition/config.yaml ignition-config.yaml
+          podman run --rm --privileged -v ${{ github.workspace }}:/srv/ -v cosa-cache:/cosa-cache -w /srv quay.io/coreos-assembler/coreos-assembler:latest /usr/bin/cosa init
 
-      - name: Initialize cosa + build
+      - name: Fetch source
         run: |
-          podman run --rm --privileged \
-            -v .:/srv/ -v cosa-cache:/cosa-cache -w /srv \
-            quay.io/coreos-assembler/coreos-assembler:latest \
-            cosa init
+          podman run --rm --privileged -v ${{ github.workspace }}:/srv/ -v cosa-cache:/cosa-cache -w /srv quay.io/coreos-assembler/coreos-assembler:latest /usr/bin/cosa fetch
 
-          podman run --rm --privileged \
-            -v .:/srv/ -v cosa-cache:/cosa-cache -w /srv \
-            quay.io/coreos-assembler/coreos-assembler:latest \
-            cosa fetch
+      - name: Build OSTree commit
+        run: |
+          podman run --rm --privileged -v ${{ github.workspace }}:/srv/ -v cosa-cache:/cosa-cache -w /srv quay.io/coreos-assembler/coreos-assembler:latest /usr/bin/cosa build
 
-          podman run --rm --privileged \
-            -v .:/srv/ -v cosa-cache:/cosa-cache -w /srv \
-            quay.io/coreos-assembler/coreos-assembler:latest \
-            cosa build
+      - name: Build installer ISO (offline capable)
+        run: |
+          podman run --rm --privileged -v ${{ github.workspace }}:/srv/ -v cosa-cache:/cosa-cache -w /srv quay.io/coreos-assembler/coreos-assembler:latest /usr/bin/cosa buildextend-installer
 
-          podman run --rm --privileged \
-            -v .:/srv/ -v cosa-cache:/cosa-cache -w /srv \
-            quay.io/coreos-assembler/coreos-assembler:latest \
-            cosa buildextend-installer
-
-      - name: Install Butane
+      - name: Install Butane (for Ignition conversion)
         run: |
           curl -LO https://github.com/coreos/butane/releases/latest/download/butane-x86_64-unknown-linux-gnu
           chmod +x butane-x86_64-unknown-linux-gnu
           sudo mv butane-x86_64-unknown-linux-gnu /usr/local/bin/butane
 
-      - name: Generate Ignition config
+      - name: Generate Ignition config from Butane
         run: |
           mkdir -p ignition
-          butane ignition-config.yaml -o ignition/config.ign
+          butane image/ignition/config.yaml -o ignition/config.ign
 
-      - name: Embed Ignition into ISO
+      - name: Install coreos-installer CLI
         run: |
           curl -LO https://github.com/coreos/coreos-installer/releases/latest/download/coreos-installer-x86_64
           chmod +x coreos-installer-x86_64
           sudo mv coreos-installer-x86_64 /usr/local/bin/coreos-installer
 
+      - name: Embed Ignition into ISO
+        run: |
           ISO=$(ls builds/latest/*.iso | head -n1)
           cp "$ISO" original.iso
+          coreos-installer iso customize --dest-ignition ignition/config.ign -o custom-silverblue.iso original.iso
 
-          coreos-installer iso customize \
-            --dest-ignition ignition/config.ign \
-            -o custom-silverblue.iso original.iso
-
-      - name: Upload ISO
+      - name: Upload final ISO artifact
         uses: actions/upload-artifact@v4
         with:
           name: custom-silverblue-iso
