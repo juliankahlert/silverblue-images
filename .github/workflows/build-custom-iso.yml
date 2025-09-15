@@ -8,47 +8,47 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install system dependencies
+      - name: Install podman and dependencies
         run: |
           sudo apt update
-          sudo apt install -y podman curl jq coreutils
+          sudo apt install -y podman curl jq
 
-      - name: Pull coreos-assembler container
+      - name: Download cosa CLI
         run: |
-          podman pull quay.io/coreos-assembler/coreos-assembler:latest
-          podman volume create cosa-cache || true
+          curl -LO https://github.com/coreos/coreos-assembler/releases/latest/download/cosa-linux-amd64
+          chmod +x cosa-linux-amd64
+          sudo mv cosa-linux-amd64 /usr/local/bin/cosa
 
-      - name: Initialize coreos-assembler (cosa)
+      - name: Initialize cosa
         run: |
-          podman run --rm --privileged -v ${{ github.workspace }}:/srv/ -v cosa-cache:/cosa-cache -w /srv quay.io/coreos-assembler/coreos-assembler:latest /usr/bin/cosa init
+          cosa init
 
-      - name: Fetch source
+      - name: Fetch cosa
         run: |
-          podman run --rm --privileged -v ${{ github.workspace }}:/srv/ -v cosa-cache:/cosa-cache -w /srv quay.io/coreos-assembler/coreos-assembler:latest /usr/bin/cosa fetch
+          cosa fetch
 
-      - name: Build OSTree commit
+      - name: Build cosa
         run: |
-          podman run --rm --privileged -v ${{ github.workspace }}:/srv/ -v cosa-cache:/cosa-cache -w /srv quay.io/coreos-assembler/coreos-assembler:latest /usr/bin/cosa build
+          cosa build
 
-      - name: Build installer ISO (offline capable)
+      - name: Build installer ISO
         run: |
-          podman run --rm --privileged -v ${{ github.workspace }}:/srv/ -v cosa-cache:/cosa-cache -w /srv quay.io/coreos-assembler/coreos-assembler:latest /usr/bin/cosa buildextend-installer
+          cosa buildextend-installer
 
-      - name: Install Butane (for Ignition conversion)
+      - name: Install Butane
         run: |
           curl -LO https://github.com/coreos/butane/releases/latest/download/butane-x86_64-unknown-linux-gnu
           chmod +x butane-x86_64-unknown-linux-gnu
           sudo mv butane-x86_64-unknown-linux-gnu /usr/local/bin/butane
 
-      - name: Generate Ignition config from Butane
+      - name: Generate Ignition config
         run: |
           mkdir -p ignition
           butane image/ignition/config.yaml -o ignition/config.ign
 
-      - name: Install coreos-installer CLI
+      - name: Install coreos-installer
         run: |
           curl -LO https://github.com/coreos/coreos-installer/releases/latest/download/coreos-installer-x86_64
           chmod +x coreos-installer-x86_64
@@ -60,7 +60,7 @@ jobs:
           cp "$ISO" original.iso
           coreos-installer iso customize --dest-ignition ignition/config.ign -o custom-silverblue.iso original.iso
 
-      - name: Upload final ISO artifact
+      - name: Upload ISO
         uses: actions/upload-artifact@v4
         with:
           name: custom-silverblue-iso
