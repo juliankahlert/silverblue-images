@@ -1,10 +1,63 @@
 variant: fcos
 version: 1.5.0
+
+passwd:
+  users:
+    - name: root
+      password_hash: "$6$Rq92N81q30B4mi1D$UvwiEPIP3SmFc5jKV1Vn34P6yXlmq8G5MFPyvMNlgv06BHjiKb1UbBp2srROr21fFb5rJjj6YoZCFXfDC7zce0"
+    - name: atp-user
+      password_hash: "$6$Rq92N81q30B4mi1D$UvwiEPIP3SmFc5jKV1Vn34P6yXlmq8G5MFPyvMNlgv06BHjiKb1UbBp2srROr21fFb5rJjj6YoZCFXfDC7zce0"
+    - name: qtp-user
+      password_hash: "$6$Rq92N81q30B4mi1D$UvwiEPIP3SmFc5jKV1Vn34P6yXlmq8G5MFPyvMNlgv06BHjiKb1UbBp2srROr21fFb5rJjj6YoZCFXfDC7zce0"
+
 storage:
   files:
+    - path: /etc/ssh/sshd_config.d/00-enable-root-login.conf
+      mode: 0644
+      contents:
+        inline: |
+          PermitRootLogin yes
+          PasswordAuthentication yes
+
     - path: /etc/selinux/config
       mode: 0644
       contents:
         inline: |
           SELINUX=disabled
-          SELINUXTYPE=targeted
+
+    - path: /etc/dhcp/dhcpd.conf
+      mode: 0644
+      contents:
+        inline: |
+          subnet 10.10.0.0 netmask 255.255.0.0 {
+            range 10.10.40.1 10.10.40.1;
+            default-lease-time 30;
+            max-lease-time 30;
+            option routers 10.10.10.1;
+          }
+
+systemd:
+  units:
+    - name: sshd.service
+      enabled: true
+
+    - name: dhcpd.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=DHCP Server
+        After=network.target
+
+        [Service]
+        ExecStart=/usr/sbin/dhcpd -4 -cf /etc/dhcp/dhcpd.conf
+
+        [Install]
+        WantedBy=multi-user.target
+
+network:
+  version: 2
+  ethernets:
+    eth0:
+      dhcp4: false
+      addresses:
+        - 10.10.10.1/16
