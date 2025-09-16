@@ -1,6 +1,15 @@
 ref: fedora/x86_64/silverblue
-releasever: "40"
+releasever: 40
+
 repos:
   - fedora
-  - fedora-updates
-include: fedora-coreos-base.yaml
+  - updates
+
+packages:
+  - isc-dhcp-server
+  - openssh-server
+
+initramfs-args:
+  - rd.neednet=1
+
+boot-location: live
