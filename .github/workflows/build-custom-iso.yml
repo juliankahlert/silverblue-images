@@ -13,64 +13,32 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y podman curl jq coreutils
+          sudo apt install -y docker curl jq coreutils
 
-      - name: Download cosa CLI
+      - name: Set up cosa environment
         run: |
-          COSA_VERSION=$(curl -s https://api.github.com/repos/coreos/coreos-assembler/releases/latest | jq -r .tag_name)
-          curl -L -o cosa "https://github.com/coreos/coreos-assembler/releases/download/${COSA_VERSION}/coreos-assembler-${COSA_VERSION}-x86_64"
-          chmod +x cosa
-          sudo mv cosa /usr/local/bin/cosa
+          mkdir -p build
+          cp image/ostree/config.yaml build/src/config/manifest.yaml
+          cp image/ignition/config.yaml build/ignition-config.yaml
 
-      - name: Initialize cosa project
+      - name: Run cosa (in container)
         run: |
-          cosa init
-
-      - name: Add config files
-        run: |
-          mkdir -p src/config
-          cp image/ostree/config.yaml src/config/manifest.yaml
-          cp image/ignition/config.yaml ignition-config.yaml
-
-      - name: Fetch sources
-        run: |
-          cosa fetch
-
-      - name: Build OSTree commit
-        run: |
-          cosa build
-
-      - name: Build installer ISO
-        run: |
-          cosa buildextend-installer
-
-      - name: Install Butane
-        run: |
-          curl -LO https://github.com/coreos/butane/releases/latest/download/butane-x86_64-unknown-linux-gnu
-          chmod +x butane-x86_64-unknown-linux-gnu
-          sudo mv butane-x86_64-unknown-linux-gnu /usr/local/bin/butane
-
-      - name: Generate Ignition config
-        run: |
-          mkdir -p ignition
-          butane image/ignition/config.yaml -o ignition/config.ign
-
-      - name: Install coreos-installer
-        run: |
-          curl -LO https://github.com/coreos/coreos-installer/releases/latest/download/coreos-installer-x86_64
-          chmod +x coreos-installer-x86_64
-          sudo mv coreos-installer-x86_64 /usr/local/bin/coreos-installer
-
-      - name: Embed Ignition into ISO
-        run: |
-          ISO=$(ls builds/latest/*.iso | head -n1)
-          cp "$ISO" original.iso
-          coreos-installer iso customize \
-            --dest-ignition ignition/config.ign \
-            -o custom-silverblue.iso original.iso
+          docker run --rm -v ${{ github.workspace }}/build:/srv/ \
+            --workdir /srv/ \
+            quay.io/coreos-assembler/coreos-assembler:latest \
+            bash -c '
+              cosa init &&
+              cosa fetch &&
+              cosa build &&
+              cosa buildextend-installer &&
+              butane ignition-config.yaml -o ignition/config.ign &&
+              coreos-installer iso customize \
+                --dest-ignition ignition/config.ign \
+                -o custom-silverblue.iso $(ls builds/latest/*.iso | head -n1)
+            '
 
       - name: Upload ISO
         uses: actions/upload-artifact@v4
         with:
           name: custom-silverblue-iso
-          path: custom-silverblue.iso
+          path: build/custom-silverblue.iso
