@@ -28,7 +28,7 @@ jobs:
             -v ${{ github.workspace }}/build:/srv:z \
             --workdir /srv \
             quay.io/coreos-assembler/coreos-assembler:latest \
-            bash -c '
+            sh -c '
               cosa init &&
               cosa fetch &&
               cosa build &&
