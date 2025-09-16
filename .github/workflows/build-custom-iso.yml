@@ -13,11 +13,12 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y podman curl jq coreutils
+          sudo apt install -y podman curl jq coreutils tree
 
       - name: Set up cosa environment
         run: |
           mkdir -p build
+          tree .
           cp image/ostree/config.yaml build/src/config/manifest.yaml
           cp image/ignition/config.yaml build/ignition-config.yaml
 
