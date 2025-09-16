@@ -15,14 +15,10 @@ jobs:
           sudo apt update
           sudo apt install -y podman curl jq coreutils
 
-      - name: Download cosa CLI (correctly)
+      - name: Download cosa CLI
         run: |
-          # Get latest release tag
           COSA_VERSION=$(curl -s https://api.github.com/repos/coreos/coreos-assembler/releases/latest | jq -r .tag_name)
-
-          # Download the actual binary
           curl -L -o cosa "https://github.com/coreos/coreos-assembler/releases/download/${COSA_VERSION}/coreos-assembler-${COSA_VERSION}-x86_64"
-
           chmod +x cosa
           sudo mv cosa /usr/local/bin/cosa
 
