@@ -13,38 +13,66 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y podman curl jq coreutils tree butane coreos-installer
+          sudo apt install -y podman curl jq coreutils tree
 
-      - name: Prepare build environment
+      - name: Set up cosa environment
         run: |
           mkdir -p build/src/config
+          tree .
           cp image/ostree/config.yaml build/src/config/manifest.yaml
           cp image/ignition/config.yaml build/ignition-config.yaml
 
-      - name: Run COSA build inside container
+      - name: Run cosa init
         run: |
           podman run --rm \
             -v ${{ github.workspace }}/build:/srv:z \
             --workdir /srv \
             quay.io/coreos-assembler/coreos-assembler:latest \
-            cosa init https://github.com/coreos/fedora-coreos-config.git && \
-            cosa fetch && \
-            cosa build && \
+            cosa init
+            
+      - name: Run cosa fetch
+        run: |
+          podman run --rm \
+            -v ${{ github.workspace }}/build:/srv:z \
+            --workdir /srv \
+            quay.io/coreos-assembler/coreos-assembler:latest \
+            cosa fetch
+            
+      - name: Run cosa build
+        run: |
+          podman run --rm \
+            -v ${{ github.workspace }}/build:/srv:z \
+            --workdir /srv \
+            quay.io/coreos-assembler/coreos-assembler:latest \
+            cosa build
+  
+      - name: Run cosa buildextend-installer
+        run: |
+          podman run --rm \
+            -v ${{ github.workspace }}/build:/srv:z \
+            --workdir /srv \
+            quay.io/coreos-assembler/coreos-assembler:latest \
             cosa buildextend-installer
-
-      - name: Customize ISO with Ignition
+    
+      - name: Run cosa butane
         run: |
           podman run --rm \
             -v ${{ github.workspace }}/build:/srv:z \
             --workdir /srv \
             quay.io/coreos-assembler/coreos-assembler:latest \
-            butane ignition-config.yaml -o ignition/config.ign && \
-            coreos-installer iso customize \
-              --dest-ignition ignition/config.ign \
-              -o build/custom-silverblue.iso \
-              builds/latest/*.iso
+            butane ignition-config.yaml -o ignition/config.ign
 
-      - name: Upload ISO artifact
+      - name: Run cosa coreos-installer iso customize
+        run: |
+          podman run --rm \
+            -v ${{ github.workspace }}/build:/srv:z \
+            --workdir /srv \
+            quay.io/coreos-assembler/coreos-assembler:latest \
+            coreos-installer iso customize \
+                --dest-ignition ignition/config.ign \
+                -o custom-silverblue.iso $(ls builds/latest/*.iso | head -n1)
+  
+      - name: Upload ISO
         uses: actions/upload-artifact@v4
         with:
           name: custom-silverblue-iso
