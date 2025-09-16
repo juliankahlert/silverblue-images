@@ -13,7 +13,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y docker curl jq coreutils
+          sudo apt install -y podman curl jq coreutils
 
       - name: Set up cosa environment
         run: |
@@ -21,10 +21,11 @@ jobs:
           cp image/ostree/config.yaml build/src/config/manifest.yaml
           cp image/ignition/config.yaml build/ignition-config.yaml
 
-      - name: Run cosa (in container)
+      - name: Run cosa (inside Podman container)
         run: |
-          docker run --rm -v ${{ github.workspace }}/build:/srv/ \
-            --workdir /srv/ \
+          podman run --rm \
+            -v ${{ github.workspace }}/build:/srv:z \
+            --workdir /srv \
             quay.io/coreos-assembler/coreos-assembler:latest \
             bash -c '
               cosa init &&
