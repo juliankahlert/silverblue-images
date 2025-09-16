@@ -17,7 +17,7 @@ jobs:
 
       - name: Set up cosa environment
         run: |
-          mkdir -p build
+          mkdir -p build/src/config
           tree .
           cp image/ostree/config.yaml build/src/config/manifest.yaml
           cp image/ignition/config.yaml build/ignition-config.yaml
