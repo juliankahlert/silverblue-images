@@ -13,33 +13,38 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y podman curl jq coreutils tree
+          sudo apt install -y podman curl jq coreutils tree butane coreos-installer
 
-      - name: Set up cosa environment
+      - name: Prepare build environment
         run: |
           mkdir -p build/src/config
-          tree .
           cp image/ostree/config.yaml build/src/config/manifest.yaml
           cp image/ignition/config.yaml build/ignition-config.yaml
 
-      - name: Run cosa (inside Podman container)
+      - name: Run COSA build inside container
         run: |
           podman run --rm \
             -v ${{ github.workspace }}/build:/srv:z \
             --workdir /srv \
             quay.io/coreos-assembler/coreos-assembler:latest \
-            sh -c '
-              cosa init &&
-              cosa fetch &&
-              cosa build &&
-              cosa buildextend-installer &&
-              butane ignition-config.yaml -o ignition/config.ign &&
-              coreos-installer iso customize \
-                --dest-ignition ignition/config.ign \
-                -o custom-silverblue.iso $(ls builds/latest/*.iso | head -n1)
-            '
+            cosa init https://github.com/coreos/fedora-coreos-config.git && \
+            cosa fetch && \
+            cosa build && \
+            cosa buildextend-installer
 
-      - name: Upload ISO
+      - name: Customize ISO with Ignition
+        run: |
+          podman run --rm \
+            -v ${{ github.workspace }}/build:/srv:z \
+            --workdir /srv \
+            quay.io/coreos-assembler/coreos-assembler:latest \
+            butane ignition-config.yaml -o ignition/config.ign && \
+            coreos-installer iso customize \
+              --dest-ignition ignition/config.ign \
+              -o build/custom-silverblue.iso \
+              builds/latest/*.iso
+
+      - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
         with:
           name: custom-silverblue-iso
