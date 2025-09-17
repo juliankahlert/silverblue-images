@@ -1,79 +1,46 @@
-name: Build Custom Silverblue ISO
+# .github/workflows/build‑iso.yml
+
+name: Build Silverblue Custom ISO
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # if using secrets for signing or registry
+      secrets: read
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Install dependencies
+      # Setup BlueBuild (if required)
+      - name: Install BlueBuild CLI
         run: |
-          sudo apt update
-          sudo apt install -y podman curl jq coreutils tree
+          curl -LO https://github.com/ublue-os/bluebuild/releases/download/v0.1.0/bluebuild-linux-amd64
+          chmod +x bluebuild-linux-amd64
+          sudo mv bluebuild-linux-amd64 /usr/local/bin/bluebuild
 
-      - name: Set up cosa environment
-        run: |
-          mkdir -p build/src/config
-          tree .
-          cp image/ostree/config.yaml build/src/config/manifest.yaml
-          cp image/ignition/config.yaml build/ignition-config.yaml
-
-      - name: Run cosa init
-        run: |
-          podman run --rm \
-            -v ${{ github.workspace }}/build:/srv:z \
-            --workdir /srv \
-            quay.io/coreos-assembler/coreos-assembler:latest \
-            cosa init
-            
-      - name: Run cosa fetch
-        run: |
-          podman run --rm \
-            -v ${{ github.workspace }}/build:/srv:z \
-            --workdir /srv \
-            quay.io/coreos-assembler/coreos-assembler:latest \
-            cosa fetch
-            
-      - name: Run cosa build
-        run: |
-          podman run --rm \
-            -v ${{ github.workspace }}/build:/srv:z \
-            --workdir /srv \
-            quay.io/coreos-assembler/coreos-assembler:latest \
-            cosa build
-  
-      - name: Run cosa buildextend-installer
-        run: |
-          podman run --rm \
-            -v ${{ github.workspace }}/build:/srv:z \
-            --workdir /srv \
-            quay.io/coreos-assembler/coreos-assembler:latest \
-            cosa buildextend-installer
-    
-      - name: Run cosa butane
-        run: |
-          podman run --rm \
-            -v ${{ github.workspace }}/build:/srv:z \
-            --workdir /srv \
-            quay.io/coreos-assembler/coreos-assembler:latest \
-            butane ignition-config.yaml -o ignition/config.ign
-
-      - name: Run cosa coreos-installer iso customize
-        run: |
-          podman run --rm \
-            -v ${{ github.workspace }}/build:/srv:z \
-            --workdir /srv \
-            quay.io/coreos-assembler/coreos-assembler:latest \
-            coreos-installer iso customize \
-                --dest-ignition ignition/config.ign \
-                -o custom-silverblue.iso $(ls builds/latest/*.iso | head -n1)
-  
-      - name: Upload ISO
-        uses: actions/upload-artifact@v4
+      - name: Build image and ISO
+        uses: ublue-os/blue-build/github-action@v1
         with:
-          name: custom-silverblue-iso
-          path: build/custom-silverblue.iso
+          recipe: recipes/silverblue-custom.yml
+          # Signing / registry often needed; skip or use dummy
+          # cosign_private_key: ${{ secrets.COSIGN_KEY }}
+          # registry_token: ${{ secrets.REG_TOKEN }}
+          # registry_username: your_user
+        # optionally set env vars for environment
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: silverblue-custom-installer-iso
+          path: |
+            output/isos/*.iso
+            # adjust to where the ISO is generated
