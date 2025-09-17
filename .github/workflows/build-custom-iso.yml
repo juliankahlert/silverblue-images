@@ -1,5 +1,3 @@
-# .github/workflows/build‑iso.yml
-
 name: Build Silverblue Custom ISO
 
 on:
