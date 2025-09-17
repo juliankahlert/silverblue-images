@@ -13,30 +13,28 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      # Setup BlueBuild (if required)
-      - name: Install BlueBuild CLI
-        run: |
-          curl -LO https://github.com/ublue-os/bluebuild/releases/download/v0.1.0/bluebuild-linux-amd64
-          chmod +x bluebuild-linux-amd64
-          sudo mv bluebuild-linux-amd64 /usr/local/bin/bluebuild
+    - name: Build image + ISO via BlueBuild
+      uses: blue-build/github-action@v1.9.1
+      with:
+        recipe: recipes/silverblue-custom.yml
+        # You can also pass other inputs if needed, e.g. signing, registry, etc.
+        # registry_username: ${{ secrets.REG_USERNAME }}
+        # registry_token: ${{ secrets.REG_TOKEN }}
+      # Optionally set env vars, etc.
 
-      - name: Build image and ISO
-        uses: ublue-os/blue-build/github-action@v1
-        with:
-          recipe: recipes/silverblue-custom.yml
-          # Signing / registry often needed; skip or use dummy
-          # cosign_private_key: ${{ secrets.COSIGN_KEY }}
-          # registry_token: ${{ secrets.REG_TOKEN }}
-          # registry_username: your_user
-        # optionally set env vars for environment
+    - name: Find built ISO
+      run: |
+        mkdir -p artifact
+        # adjust this glob to match where bluebuild outputs the ISO
+        # e.g. output/isos or whatever your recipe defines
+        cp output/isos/*.iso artifact/
 
-      - name: Upload ISO artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: silverblue-custom-installer-iso
-          path: |
-            output/isos/*.iso
-            # adjust to where the ISO is generated
+    - name: Upload ISO artifact (v4)
+      uses: actions/upload-artifact@v3
+      with:
+        name: silverblue-custom-installer‑v4
+        path: artifact/*.iso
+
