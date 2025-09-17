@@ -20,10 +20,7 @@ jobs:
       uses: blue-build/github-action@v1.9.1
       with:
         recipe: recipes/silverblue-custom.yml
-        # You can also pass other inputs if needed, e.g. signing, registry, etc.
-        # registry_username: ${{ secrets.REG_USERNAME }}
-        # registry_token: ${{ secrets.REG_TOKEN }}
-      # Optionally set env vars, etc.
+        args: --no-sign # We can sign our image
 
     - name: Find built ISO
       run: |
