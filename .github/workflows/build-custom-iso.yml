@@ -32,9 +32,9 @@ jobs:
         # e.g. output/isos or whatever your recipe defines
         cp output/isos/*.iso artifact/
 
-    - name: Upload ISO artifact (v4)
-      uses: actions/upload-artifact@v3
+    - name: Upload ISO artifact
+      uses: actions/upload-artifact@v4
       with:
-        name: silverblue-custom-installer‑v4
+        name: silverblue-custom-installer
         path: artifact/*.iso
 
