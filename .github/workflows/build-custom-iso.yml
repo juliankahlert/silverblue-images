@@ -16,6 +16,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
+      
+    - name: LS
+      run: |
+        ls .
 
     - name: Build image + ISO via BlueBuild
       uses: blue-build/github-action@v1.9.1
