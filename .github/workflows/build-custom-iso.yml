@@ -34,7 +34,7 @@ jobs:
         # optionally set env vars for environment
 
       - name: Upload ISO artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: silverblue-custom-installer-iso
           path: |
