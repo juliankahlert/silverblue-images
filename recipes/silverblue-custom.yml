@@ -1,0 +1,83 @@
+name: silverblue-custom
+description: |
+  Custom Fedora Silverblue
+
+base:
+  distro: fedora
+  variant: silverblue
+  version: 40
+
+rpm:
+  packages:
+    - @gnome-desktop
+    - gnome-terminal
+    - zsh
+    - zsh-completions
+    - openssh-server
+    - isc-dhcp-server
+    - nano
+  remove:
+    - firefox  # Example: remove unwanted apps
+
+users:
+  - name: root
+    password_hash: "$6$zN0v6mVPBYX2y3R.$K0pUlcJSyIlDFxfxLWBqac1QUz.OUzhQ9W3.Dw3caTvTRKmUFMCyOyivi0I7GKSMF7xs0P9QDe2pzUzrxB67o1"
+    shell: /usr/bin/bash
+
+  - name: qtp
+    password_hash: "$6$zN0v6mVPBYX2y3R.$K0pUlcJSyIlDFxfxLWBqac1QUz.OUzhQ9W3.Dw3caTvTRKmUFMCyOyivi0I7GKSMF7xs0P9QDe2pzUzrxB67o1"
+    shell: /usr/bin/zsh
+    sudo: true
+    groups:
+      - wheel
+
+files:
+  usr/etc/ssh/sshd_config: |
+    PermitRootLogin yes
+    PasswordAuthentication yes
+
+  usr/etc/dhcp/dhcpd.conf: |
+    default-lease-time 600;
+    max-lease-time 7200;
+    subnet 10.10.0.0 netmask 255.255.0.0 {
+      range 10.10.40.1 10.10.40.1;
+      option routers 10.10.40.1;
+      option domain-name-servers 8.8.8.8;
+    }
+
+  usr/etc/profile.d/default_editor.sh: |
+    export EDITOR=nano
+
+  usr/etc/shells: |
+    /usr/bin/bash
+    /usr/bin/zsh
+
+  usr/etc/selinux/config: |
+    SELINUX=disabled
+    SELINUXTYPE=targeted
+
+kargs:
+  append:
+    - "selinux=0"
+
+services:
+  enable:
+    - sshd.service
+    - dhcpd.service
+  disable:
+    - rpm-ostreed.service  # attempt to disable OSTree updates
+
+overrides:
+  remove:
+    - rpm-ostree  # danger: this breaks update mechanisms
+
+firstboot:
+  scripts:
+    - name: harden-root
+      inline: |
+        passwd -l root  # Optional: lock root login later
+        chsh -s /usr/bin/zsh qtp
+
+iso:
+  enabled: true
+  embed_rpms: true
