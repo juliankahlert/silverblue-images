@@ -11,8 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      # if using secrets for signing or registry
-      secrets: read
 
     steps:
       - name: Checkout repository
