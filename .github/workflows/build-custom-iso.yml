@@ -15,15 +15,13 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
-  
-    - name: Disable signing
-      run: echo "--no-sign" >> "$GITHUB_ENV"
+
 
     - name: Build image + ISO via BlueBuild
       uses: blue-build/github-action@v1.9.1
       with:
         recipe: recipes/silverblue-custom.yml
-        build_opts: ${{ env.BUILD_OPTS }}
+        cosign_private_key: ${{ secrets.COSIGN_PRIVATE_KEY }}
 
     - name: Find built ISO
       run: |
