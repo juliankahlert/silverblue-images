@@ -20,7 +20,7 @@ jobs:
       uses: blue-build/github-action@v1.9.1
       with:
         recipe: recipes/silverblue-custom.yml
-        args: --no-sign # We can sign our image
+        build_opts: --no-sign # We can sign our image if we want
 
     - name: Find built ISO
       run: |
